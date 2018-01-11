@@ -44,7 +44,8 @@ abstract class Loopi {
             throw new Exception("Invalid direction. Please use GPIO_DIRECTION_IN or GPIO_DIRECTION_OUT.");
         }
         $success = true;
-        foreach ($gpioByName as $name => $gpio) {
+	foreach ($gpioByName as $name => $gpio) {
+	    $this->unregisterGpio($gpio);
             if (@file_put_contents(static::GPIO_PATH . static::GPIO_FILE_EXPORT, $gpio) > 0) {
                 $this->getLogger()->info('Exported GPIO ' . $gpio . '.');
             } else {
@@ -123,7 +124,7 @@ abstract class Loopi {
             throw new Exception('Cannot read input GPIO ' . $gpio . ': ' . $inputName);
         }
 
-        $value = file_get_contents($gpioFile);
+        $value = trim(file_get_contents($gpioFile));
         $this->inputStatesByName[$inputName] = $value;
         return $this;
     }
@@ -222,15 +223,20 @@ abstract class Loopi {
 
     abstract protected function loop();
 
+    final private function unregisterGpio($gpio)
+    {
+	return @file_put_contents(static::GPIO_PATH . static::GPIO_FILE_UNEXPORT, $gpio);
+    }
+
     final private function close()
     {
         foreach ($this->inputGpioByName as $name => $gpio) {
-            file_put_contents(static::GPIO_PATH . static::GPIO_FILE_UNEXPORT, $gpio);
+            $this->unregisterGpio($gpio);
             $this->getLogger()->info('Unregistered `in` GPIO ' . $gpio . ' as `'.$name.'`.');
         }
 
         foreach ($this->outputGpioByName as $name => $gpio) {
-            file_put_contents(static::GPIO_PATH . static::GPIO_FILE_UNEXPORT, $gpio);
+            $this->unregisterGpio($gpio);
             $this->getLogger()->info('Unregistered `in` GPIO ' . $gpio . ' as `'.$name.'`.');
         }
 
