@@ -38,21 +38,28 @@ abstract class Loopi {
 
     final private function registerGpio($direction, array $gpioByName)
     {
-        if (!in_array($direction, [ static::GPIO_DIRECTION_IN, static::GPIO_DIRECTION_OUT ]) {
+        if (!in_array($direction, [ static::GPIO_DIRECTION_IN, static::GPIO_DIRECTION_OUT ])) {
             throw new Exception("Invalid direction. Please use GPIO_DIRECTION_IN or GPIO_DIRECTION_OUT.");
         }
-
+        $success = true;
         foreach ($gpioByName as $name => $gpio) {
             file_put_contents(static::GPIO_PATH . static::GPIO_FILE_EXPORT, $gpio);
-            file_put_contents(static::GPIO_PATH . static::GPIO_PREFIX . $gpio . DIRECTORY_SEPARATOR . static::GPIO_PIN_FILE_DIRECTION, $direction);
+	    if (file_put_contents(static::GPIO_PATH . static::GPIO_PREFIX . $gpio . DIRECTORY_SEPARATOR . static::GPIO_PIN_FILE_DIRECTION, $direction) === false) {
+               $this->getLogger()->warning('Required `'.$direction.'` GPIO ' . $gpio . ' was not properly registered.');
+               $success = false;
+	    } else {
             if ($direction === static::GPIO_DIRECTION_IN) {
                 $this->inputGpioByName[$name] = $gpio;
             } else {
                 $this->outputGpioByName[$name] = $gpio;
             }
 
-            $this->getLogger()->info('Registered `'.$direction.'` GPIO ' . $gpio . ' as `'.$name.'`.');
+  	    $this->getLogger()->info('Registered `'.$direction.'` GPIO ' . $gpio . ' as `'.$name.'`.');
+	    }
         }
+
+        if (!$success) { $this->getLogger()->error('Could not properly register GPIOs.');
+            $this->quit();        }
 
         return $this;
     }
@@ -67,28 +74,13 @@ abstract class Loopi {
         return $success;
     }
 
-    final private function verifyGpio()
-    {
-        $success = true;
-        foreach ($this->inputGpioByName as $name => $gpio) {
-            if (!is_dir(static::GPIO_PATH . static::GPIO_PREFIX . $gpio)) {
-                $this->getLogger()->warning('Required `in` GPIO ' . $gpio . ' was not properly registered.');
-                $success = false;
-            }
-        }
-
-        foreach ($this->outputGpioByName as $name => $gpio) {
-            if (!is_dir(static::GPIO_PATH . static::GPIO_PREFIX . $gpio)) {
-                $this->getLogger()->warning('Required `out` GPIO ' . $gpio . ' was not properly registered.');
-                $success = false;
-            }
-        }
-
-        return $success;
-    }
-
     final private function initialize($config)
     {
+        $this->inputGpioByName = [];
+        $this->inputStatesByName = [];
+	$this->outputGpioByName = [];
+	$this->outputStatesByName = [];
+	$this->outputStatesByNameDelayed = [];
         if (isset($config['input'])) {
             $this->registerGpio(static::GPIO_DIRECTION_IN, $config['input']);
         }
@@ -99,11 +91,6 @@ abstract class Loopi {
 
         $this->getLogger()->info('Waiting 1 second for GPIO settings to settle.');
         sleep(1);
-
-        if (!$this->verifyGpio()) {
-            $this->getLogger()->error('Could not properly register GPIOs.');
-            $this->quit();
-        }
 
         return $this;
     }
@@ -145,7 +132,7 @@ abstract class Loopi {
             return $this;
         }
 
-        if (!in_array($value, [ static::GPIO_HIGH, static::GPIO_LOW ]) {
+        if (!in_array($value, [ static::GPIO_HIGH, static::GPIO_LOW ])) {
             throw new Exception("Invalid value for output. Please use GPIO_HIGH or GPIO_LOW.");
         }
 
@@ -159,7 +146,7 @@ abstract class Loopi {
 
     final private function writeOutput($outputName, $value)
     {
-        if (!in_array($value, [ static::GPIO_HIGH, static::GPIO_LOW ]) {
+        if (!in_array($value, [ static::GPIO_HIGH, static::GPIO_LOW ])) {
             throw new Exception("Invalid value for output. Please use GPIO_HIGH or GPIO_LOW.");
         }
 
@@ -197,17 +184,17 @@ abstract class Loopi {
         return $this;
     }
 
-    final private function quit()
+    final protected function quit()
     {
         $this->running = false;
     }
 
-    final public run()
+    final public function run()
     {
+	    $this->running = true;
         $this->initialize(include "config.php");
         $this->writeDelayedOutputs();
         $this->retrieveDelayedInputs();
-        $this->running = true;
         while($this->running) {
             $this->loop();
         }
@@ -218,12 +205,12 @@ abstract class Loopi {
 
     final private function close()
     {
-        foreach ($inputGpioByName as $name => $gpio) {
+        foreach ($this->inputGpioByName as $name => $gpio) {
             file_put_contents(static::GPIO_PATH . static::GPIO_FILE_UNEXPORT, $gpio);
             $this->getLogger()->info('Unregistered `in` GPIO ' . $gpio . ' as `'.$name.'`.');
         }
 
-        foreach ($outputGpioByName as $name => $gpio) {
+        foreach ($this->outputGpioByName as $name => $gpio) {
             file_put_contents(static::GPIO_PATH . static::GPIO_FILE_UNEXPORT, $gpio);
             $this->getLogger()->info('Unregistered `in` GPIO ' . $gpio . ' as `'.$name.'`.');
         }
