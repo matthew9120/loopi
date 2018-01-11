@@ -51,6 +51,12 @@ abstract class Loopi {
             }
         }
 
+        if (!$success) {
+            $this->getLogger()->error('Could not properly export GPIOs.');
+            $this->quit();
+            return $this;
+        }
+
         $this->getLogger()->info('Waiting 1 second for GPIO settings to settle.');
         sleep(1);
 
