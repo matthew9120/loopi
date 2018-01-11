@@ -38,11 +38,11 @@ class DiodeBlinker extends IDCT\Loopi
             break;
         }
 
-        if (++$state > 4) {
-            $state = 0;
+        if (++$this->state > 4) {
+            $this->state = 0;
         }
 
-        sleep(1);
+        usleep(250000);
     }
 }
 
