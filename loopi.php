@@ -2,6 +2,8 @@
 
 namespace IDCT;
 
+use \Exception;
+
 abstract class Loopi {
 
     const GPIO_PATH = '/sys/class/gpio/';
@@ -176,7 +178,7 @@ abstract class Loopi {
         }
 
         file_put_contents($gpioFile, $value);
-        $this->outputStatesByName[$inputName] = $value;
+        $this->outputStatesByName[$outputName] = $value;
         return $this;
     }
 
@@ -210,7 +212,9 @@ abstract class Loopi {
         $this->initialize(include "config.php");
         $this->writeDelayedOutputs();
         $this->retrieveDelayedInputs();
-        while($this->running) {
+	while($this->running) {
+	$this->writeDelayedOutputs();
+	$this->retrieveDelayedInputs();
             $this->loop();
         }
         $this->close();
