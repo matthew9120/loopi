@@ -43,23 +43,35 @@ abstract class Loopi {
         }
         $success = true;
         foreach ($gpioByName as $name => $gpio) {
-            file_put_contents(static::GPIO_PATH . static::GPIO_FILE_EXPORT, $gpio);
-	    if (file_put_contents(static::GPIO_PATH . static::GPIO_PREFIX . $gpio . DIRECTORY_SEPARATOR . static::GPIO_PIN_FILE_DIRECTION, $direction) === false) {
-               $this->getLogger()->warning('Required `'.$direction.'` GPIO ' . $gpio . ' was not properly registered.');
-               $success = false;
-	    } else {
-            if ($direction === static::GPIO_DIRECTION_IN) {
-                $this->inputGpioByName[$name] = $gpio;
+            if (file_put_contents(static::GPIO_PATH . static::GPIO_FILE_EXPORT, $gpio) > 0) {
+                $this->getLogger()->info('Exported GPIO ' . $gpio . '.');
             } else {
-                $this->outputGpioByName[$name] = $gpio;
+                $success = false;
+                $this->getLogger()->warning('Required GPIO ' . $gpio . ' could not be exported (got permissions?).');
             }
-
-  	    $this->getLogger()->info('Registered `'.$direction.'` GPIO ' . $gpio . ' as `'.$name.'`.');
-	    }
         }
 
-        if (!$success) { $this->getLogger()->error('Could not properly register GPIOs.');
-            $this->quit();        }
+        $this->getLogger()->info('Waiting 1 second for GPIO settings to settle.');
+        sleep(1);
+
+        foreach ($gpioByName as $name => $gpio) {
+	        if (file_put_contents(static::GPIO_PATH . static::GPIO_PREFIX . $gpio . DIRECTORY_SEPARATOR . static::GPIO_PIN_FILE_DIRECTION, $direction) === false) {
+               $this->getLogger()->warning('Required `'.$direction.'` GPIO ' . $gpio . ' direction could not be set.');
+               $success = false;
+	        } else {
+                if ($direction === static::GPIO_DIRECTION_IN) {
+                    $this->inputGpioByName[$name] = $gpio;
+                } else {
+                    $this->outputGpioByName[$name] = $gpio;
+                }
+  	            $this->getLogger()->info('Registered `'.$direction.'` GPIO ' . $gpio . ' as `'.$name.'`.');
+	        }
+        }
+
+        if (!$success) {
+            $this->getLogger()->error('Could not properly register GPIOs.');
+            $this->quit();
+        }
 
         return $this;
     }
@@ -88,9 +100,6 @@ abstract class Loopi {
         if (isset($config['output'])) {
             $this->registerGpio(static::GPIO_DIRECTION_OUT, $config['output']);
         }
-
-        $this->getLogger()->info('Waiting 1 second for GPIO settings to settle.');
-        sleep(1);
 
         return $this;
     }
