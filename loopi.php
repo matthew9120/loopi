@@ -43,7 +43,7 @@ abstract class Loopi {
         }
         $success = true;
         foreach ($gpioByName as $name => $gpio) {
-            if (file_put_contents(static::GPIO_PATH . static::GPIO_FILE_EXPORT, $gpio) > 0) {
+            if (@file_put_contents(static::GPIO_PATH . static::GPIO_FILE_EXPORT, $gpio) > 0) {
                 $this->getLogger()->info('Exported GPIO ' . $gpio . '.');
             } else {
                 $success = false;
@@ -61,7 +61,7 @@ abstract class Loopi {
         sleep(1);
 
         foreach ($gpioByName as $name => $gpio) {
-	        if (file_put_contents(static::GPIO_PATH . static::GPIO_PREFIX . $gpio . DIRECTORY_SEPARATOR . static::GPIO_PIN_FILE_DIRECTION, $direction) === false) {
+	        if (@file_put_contents(static::GPIO_PATH . static::GPIO_PREFIX . $gpio . DIRECTORY_SEPARATOR . static::GPIO_PIN_FILE_DIRECTION, $direction) === false) {
                $this->getLogger()->warning('Required `'.$direction.'` GPIO ' . $gpio . ' direction could not be set.');
                $success = false;
 	        } else {
