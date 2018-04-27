@@ -40,6 +40,7 @@ abstract class Loopi
      * @var int[string]
      */
     private $inputStatesByName;
+    private $previousStatesByName;
 
     /**
      * Output GPIOs identifiers (numbers) by their defined names.
@@ -288,6 +289,7 @@ abstract class Loopi
     {
         $this->inputGpioByName = [];
         $this->inputStatesByName = [];
+        $this->previousStatesByName = [];
         $this->outputGpioByName = [];
         $this->outputStatesByName = [];
         $this->outputStatesByNameDelayed = [];
@@ -364,11 +366,17 @@ abstract class Loopi
      */
     final private function retrieveDelayedInputs()
     {
+        $this->previousStatesByName = $this->inputStatesByName;
+
         foreach (array_keys($this->inputGpioByName) as $inputName) {
             $this->retrieveInput($inputName);
         }
 
         return $this;
+    }
+
+    final private function switchedDown($inputName) {
+        return $this->previousStatesByName[$inputName] === $this::GPIO_HIGH && $this->inputStatesByName[$inputName] === $this::GPIO_LOW;
     }
 
     /**
